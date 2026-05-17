@@ -1,0 +1,10 @@
+{
+  "node_1": {
+    "diameter": 50,
+    "threshold": 2
+  },
+  "node_2": {
+    "diameter": 10.4,
+    "threshold": 2
+  }
+}
