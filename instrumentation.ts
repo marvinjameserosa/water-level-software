@@ -60,6 +60,11 @@ export async function register() {
       }
     }
 
+    const NODE_IPS: Record<string, string> = {
+      "node_1": "http://192.168.4.2",
+      "node_2": "http://192.168.4.3",
+    };
+
     async function poll() {
       if (isPolling) return;
       isPolling = true;
@@ -67,53 +72,69 @@ export async function register() {
       const config = await readConfig();
       
       try {
-        const res = await fetch(`${MASTER_IP}/api/state?ts=${Date.now()}`, { signal: AbortSignal.timeout(10000) });
-        if (res.ok) {
-          const state = await res.json();
-          const nodes = state.nodes || {};
+        const currentData = await readData();
+        let changed = false;
+        
+        for (const nodeId of ['node_1', 'node_2']) {
+          const sensorUrl = `${NODE_IPS[nodeId]}/sensor`;
+          let nodeState = null;
           
-          const currentData = await readData();
-          let changed = false;
-          
-          for (const nodeId of ['node_1', 'node_2']) {
-            const nodeState = nodes[nodeId];
-            if (!nodeState) continue;
-            
-            const lastEntry = currentData.history.find((h: any) => (h.nodeId || "node_1") === nodeId);
-            
-            if (!lastEntry || lastEntry.h !== nodeState.h || lastEntry.d !== nodeState.d || lastEntry.diff !== nodeState.diff) {
-              currentData.history.unshift({
-                timestamp: new Date().toISOString(),
-                nodeId,
-                h: nodeState.h,
-                d: nodeState.d,
-                diff: nodeState.diff
-              });
-              changed = true;
-            }
-            
-            const nodeConfig = config[nodeId] || { diameter: 10.4, threshold: 2.0 };
-            const waterLevel = nodeConfig.diameter - nodeState.d;
-            
-            if (waterLevel <= nodeConfig.threshold) {
-              if (!alertTriggered[nodeId]) {
-                alertTriggered[nodeId] = true;
-                console.log(`[Monitor] Alert triggered for ${nodeId}. Water level: ${waterLevel}`);
-                await triggerCamera(nodeId);
-                const freshData = await readData();
-                currentData.history = freshData.history;
-              }
-            } else {
-              if (alertTriggered[nodeId]) {
-                console.log(`[Monitor] Alert reset for ${nodeId}. Water level: ${waterLevel}`);
-                alertTriggered[nodeId] = false;
+          try {
+            const sensorRes = await fetch(sensorUrl, { 
+              cache: 'no-store', 
+              signal: AbortSignal.timeout(5000),
+              headers: { "Connection": "close" }
+            });
+            if (sensorRes.ok) {
+              const sensorJson = await sensorRes.json();
+              if (typeof sensorJson.distance === 'number') {
+                nodeState = {
+                  h: sensorJson.distance,
+                  d: sensorJson.distance,
+                  diff: 0
+                };
               }
             }
+          } catch (e: any) {
+            console.error(`[Monitor] Failed to fetch sensor data directly from ${nodeId}: ${e.message}`);
           }
           
-          if (changed) {
-            await writeData(currentData);
+          if (!nodeState) continue;
+          
+          const lastEntry = currentData.history.find((h: any) => (h.nodeId || "node_1") === nodeId);
+          
+          if (!lastEntry || lastEntry.h !== nodeState.h || lastEntry.d !== nodeState.d || lastEntry.diff !== nodeState.diff) {
+            currentData.history.unshift({
+              timestamp: new Date().toISOString(),
+              nodeId,
+              h: nodeState.h,
+              d: nodeState.d,
+              diff: nodeState.diff
+            });
+            changed = true;
           }
+          
+          const nodeConfig = config[nodeId] || { diameter: 10.4, threshold: 2.0 };
+          const waterLevel = nodeConfig.diameter - nodeState.d;
+          
+          if (waterLevel <= nodeConfig.threshold) {
+            if (!alertTriggered[nodeId]) {
+              alertTriggered[nodeId] = true;
+              console.log(`[Monitor] Alert triggered for ${nodeId}. Water level: ${waterLevel}`);
+              await triggerCamera(nodeId);
+              const freshData = await readData();
+              currentData.history = freshData.history;
+            }
+          } else {
+            if (alertTriggered[nodeId]) {
+              console.log(`[Monitor] Alert reset for ${nodeId}. Water level: ${waterLevel}`);
+              alertTriggered[nodeId] = false;
+            }
+          }
+        }
+        
+        if (changed) {
+          await writeData(currentData);
         }
       } catch (err: any) {
         console.error("[Monitor] Polling error:", err.message);
