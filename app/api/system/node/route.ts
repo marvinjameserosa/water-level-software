@@ -55,36 +55,37 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { nodeId } = await request.json();
+    const { nodeId, action } = await request.json();
     if (!nodeId || !NODE_IPS[nodeId]) {
       return NextResponse.json({ error: "Invalid or missing nodeId" }, { status: 400 });
     }
 
     let h = 10.7, d = 10.4, diff = 0;
+    let buffer: Buffer | null = null;
+    let filename = "";
 
-    // 1. Trigger the camera DIRECTLY via its Static IP and wait for the image binary
-    // DO THIS FIRST because the camera sensor is very sensitive to Wi-Fi power spikes!
-    const targetUrl = `${NODE_IPS[nodeId]}/capture`;
-    console.log(`[Backend] Fetching photo directly from ${targetUrl}`);
-    
-    const imgRes = await fetch(targetUrl, { 
-      cache: "no-store", 
-      signal: AbortSignal.timeout(10000) // 10 seconds to allow the ESP32 to snap and send
-    });
+    // 1. Only trigger camera if action is not 'poll'
+    if (action !== 'poll') {
+      const targetUrl = `${NODE_IPS[nodeId]}/capture`;
+      console.log(`[Backend] Fetching photo directly from ${targetUrl}`);
+      
+      const imgRes = await fetch(targetUrl, { 
+        cache: "no-store", 
+        signal: AbortSignal.timeout(10000)
+      });
 
-    if (!imgRes.ok) {
-      throw new Error(`Edge node failed to capture image: ${imgRes.statusText}`);
+      if (!imgRes.ok) {
+        throw new Error(`Edge node failed to capture image: ${imgRes.statusText}`);
+      }
+
+      const blob = await imgRes.blob();
+      const bytes = await blob.arrayBuffer();
+      buffer = Buffer.from(bytes);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    // 2. Receive the image directly into memory
-    const blob = await imgRes.blob();
-    const bytes = await blob.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Give the ESP32-CAM a short delay to recover from the massive image Wi-Fi transmission
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // 3. Fetch current node state for h, d, diff
+    // 2. Fetch current node state for h, d, diff
     try {
       const sensorUrl = `${NODE_IPS[nodeId]}/sensor`;
       console.log(`[Backend] Fetching sensor data directly from ${sensorUrl}`);
@@ -96,8 +97,8 @@ export async function POST(request: Request) {
       if (sensorRes.ok) {
         const sensorJson = await sensorRes.json();
         if (typeof sensorJson.distance === 'number') {
-          h = sensorJson.distance; // Use the distance as the level 'h'
-          d = sensorJson.distance; // Also store in 'd'
+          h = sensorJson.distance;
+          d = sensorJson.distance;
         }
       }
     } catch (err) {
@@ -123,17 +124,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Save image locally
+    // 3. Save image locally ONLY if we captured one
     const captureDate = new Date();
-    const filename = `capture_${formatFileTimestamp(captureDate)}.jpg`;
     const publicDir = join(process.cwd(), "public");
-    const capturesDir = join(publicDir, "captures");
     const dataPath = join(publicDir, "data.json");
     
-    await mkdir(capturesDir, { recursive: true });
-    await writeFile(join(capturesDir, filename), buffer);
+    if (buffer) {
+      filename = `capture_${formatFileTimestamp(captureDate)}.jpg`;
+      const capturesDir = join(publicDir, "captures");
+      await mkdir(capturesDir, { recursive: true });
+      await writeFile(join(capturesDir, filename), buffer);
+    }
 
-    // 5. Update data.json
+    // 4. Update data.json
     let data: { diameter: number; history: HistoryEntry[] } = { diameter: d, history: [] };
     try {
       const fileData = await readFile(dataPath, "utf-8");
@@ -148,14 +151,17 @@ export async function POST(request: Request) {
 
     const newEntry: HistoryEntry = {
       timestamp: captureDate.toISOString(),
-      image: `/captures/${filename}`,
+      image: buffer ? `/captures/${filename}` : (data.history.find(h => h.nodeId === nodeId)?.image || ""),
       nodeId,
       h,
       d,
       diff,
     };
     
+    // Only keep last 100 entries
     data.history.unshift(newEntry);
+    if (data.history.length > 100) data.history = data.history.slice(0, 100);
+    
     await writeFile(dataPath, JSON.stringify(data, null, 2));
     
     return NextResponse.json({ success: true, entry: newEntry });

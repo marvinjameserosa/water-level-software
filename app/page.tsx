@@ -107,49 +107,21 @@ export default function WaterLevelDashboard() {
 
   const fetchStateData = useCallback(async () => {
     try {
-      const res = await fetch('/api/system/node', { cache: "no-store" });
-      if (!res.ok) {
-        if (!isErrorState) {
-          toast({
-            title: "Connection Error",
-            description: `API returned an error: ${res.statusText}`,
-            variant: "destructive",
-          });
-          setIsErrorState(true);
-        }
-        return;
-      }
-      setIsErrorState(false);
-      
-      const nodes = await res.json();
-
-      setHistory((prev) => {
-        const newHistory = [...prev];
-        const now = new Date().toISOString();
-        let changed = false;
-
-        const updateNodeHistory = (nodeId: string, state: any) => {
-          if (!state) return;
-          const last = latestCaptureForNode(newHistory, nodeId);
-          if (!last || last.h !== state.h || last.d !== state.d || last.diff !== state.diff) {
-            newHistory.push({
-              timestamp: now,
-              nodeId,
-              h: state.h,
-              d: state.d,
-              diff: state.diff,
-            });
-            changed = true;
-          }
-        };
-
-        updateNodeHistory("node_1", nodes?.node_1);
-        updateNodeHistory("node_2", nodes?.node_2);
-
-        if (newHistory.length > 50) return newHistory.slice(newHistory.length - 50);
-        return changed ? newHistory : prev;
+      // Poll Node 1 directly using the backend manual trigger logic (without taking a photo)
+      await fetch('/api/system/node', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodeId: 'node_1', action: 'poll' })
       });
-
+      
+      // Poll Node 2
+      await fetch('/api/system/node', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodeId: 'node_2', action: 'poll' })
+      });
+      
+      setIsErrorState(false);
     } catch (error: any) {
       console.error("Failed to load state data:", error);
       if (!isErrorState) {
