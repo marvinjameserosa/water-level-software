@@ -40,6 +40,7 @@ export default function WaterLevelDashboard() {
   const [node2Config, setNode2Config] = useState<{ diameter: number | string; threshold: number | string }>({ diameter: DEFAULT_DIAMETER, threshold: DEFAULT_USER_THRESHOLD });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [globalInterval, setGlobalInterval] = useState<number | string>(30);
 
   useEffect(() => {
     async function loadConfig() {
@@ -47,6 +48,7 @@ export default function WaterLevelDashboard() {
         const res = await fetch('/api/system/config?ts=' + Date.now(), { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
+          if (data.interval) setGlobalInterval(data.interval);
           if (data.node_1) setNode1Config(data.node_1);
           if (data.node_2) setNode2Config(data.node_2);
         }
@@ -65,7 +67,7 @@ export default function WaterLevelDashboard() {
       await fetch('/api/system/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ node_1: node1Config, node_2: node2Config })
+        body: JSON.stringify({ interval: globalInterval, node_1: node1Config, node_2: node2Config })
       });
       toast({
         title: "Configuration Saved",
@@ -169,9 +171,13 @@ export default function WaterLevelDashboard() {
     if (!initialLoadDone) return;
     
     void fetchStateData();
-    const intervalId = window.setInterval(fetchStateData, 15000);
+    const intervalMs = typeof globalInterval === 'number' ? globalInterval * 1000 : 30000;
+    const intervalId = window.setInterval(() => {
+      fetchHistory();
+      fetchStateData();
+    }, intervalMs);
     return () => window.clearInterval(intervalId);
-  }, [fetchStateData, initialLoadDone]);
+  }, [fetchStateData, fetchHistory, initialLoadDone, globalInterval]);
 
   const node1Latest = latestCaptureForNode(history, "node_1");
   const node2Latest = latestCaptureForNode(history, "node_2");
@@ -195,9 +201,6 @@ export default function WaterLevelDashboard() {
       <header className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">System Dashboard</h1>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">
-            Node sensors taking height measurements from the bottom of the container
-          </p>
         </div>
         <BatteryStatus isOnline={!isErrorState} />
       </header>
@@ -208,6 +211,30 @@ export default function WaterLevelDashboard() {
           description={`Water level is ${node1Alert ? "Node 1" : "Node 2"} below threshold.`}
         />
       )}
+
+      <div className="bg-card/50 border border-border p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Global Settings</h2>
+          <p className="text-sm text-muted-foreground">Configure the polling interval for continuous background monitoring.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium whitespace-nowrap">Polling Interval (s):</label>
+          <input 
+            type="number" 
+            className="flex h-9 w-24 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            value={globalInterval}
+            onChange={(e) => setGlobalInterval(e.target.value === "" ? "" : parseFloat(e.target.value))}
+            min={5}
+          />
+          <button 
+            onClick={handleSaveConfig} 
+            disabled={isSaving}
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
 
       <div className="grid gap-8">
         <NodeDashboard

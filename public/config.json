@@ -1,4 +1,5 @@
 {
+  "interval": 30,
   "node_1": {
     "diameter": 50,
     "threshold": 2

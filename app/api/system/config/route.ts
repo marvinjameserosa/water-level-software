@@ -11,6 +11,7 @@ export async function GET() {
   } catch (error) {
     // If file doesn't exist or error, return defaults
     const defaults = {
+      interval: 30,
       node_1: { diameter: 10.4, threshold: 2.0 },
       node_2: { diameter: 10.4, threshold: 2.0 }
     };
