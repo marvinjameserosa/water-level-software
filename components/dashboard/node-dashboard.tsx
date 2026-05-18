@@ -28,6 +28,8 @@ interface NodeDashboardProps {
   onCaptureComplete: () => void;
   onSave: () => void;
   isSaving?: boolean;
+  onDeleteEntry?: (timestamp: string) => void;
+  onResetNode?: () => void;
 }
 
 function formatTimestamp(timestamp: string) {
@@ -47,13 +49,16 @@ export function NodeDashboard({
   imageUrl,
   onCaptureComplete,
   onSave,
-  isSaving
+  isSaving,
+  onDeleteEntry,
+  onResetNode
 }: NodeDashboardProps) {
   const nodeHistory = history.filter(h => (h.nodeId ?? "node_1") === nodeId);
   
   const buildReadings = () => {
     if (!nodeHistory.length) return [];
-    return [...nodeHistory].reverse().slice(0, 5).map((entry, index) => {
+    // nodeHistory is already descending order since backend unshifts.
+    return nodeHistory.map((entry, index) => {
       const totalDepth = Number(containerDiameter) || 0;
       const sensorDistance = typeof entry.d === "number" ? entry.d : 0;
       
@@ -74,6 +79,7 @@ export function NodeDashboard({
 
       return {
         id: `${entry.timestamp}-${index}`,
+        originalTimestamp: entry.timestamp,
         nodeId: entry.nodeId ?? "node_1",
         timestamp: formatTimestamp(entry.timestamp),
         containerDiameter: totalDepth,
@@ -92,10 +98,20 @@ export function NodeDashboard({
 
   return (
     <div className="space-y-6 border border-border rounded-xl p-6 bg-card/50">
-      <h2 className="text-2xl font-bold flex items-center gap-2">
-        <span className="flex h-3 w-3 rounded-full bg-emerald-500" />
-        {title}
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <span className="flex h-3 w-3 rounded-full bg-emerald-500" />
+          {title}
+        </h2>
+        {onResetNode && (
+          <button 
+            onClick={onResetNode}
+            className="text-sm font-medium text-destructive hover:underline"
+          >
+            Reset Node Data
+          </button>
+        )}
+      </div>
       
       <div className="grid gap-6 md:grid-cols-[1fr_1fr]">
         {/* Left Column: Camera and Metrics */}
@@ -137,7 +153,11 @@ export function NodeDashboard({
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Recent Readings
             </h3>
-            <ReadingsTable readings={buildReadings()} alertThreshold={userThreshold} />
+            <ReadingsTable 
+              readings={buildReadings()} 
+              alertThreshold={userThreshold} 
+              onDeleteEntry={onDeleteEntry}
+            />
           </div>
         </div>
       </div>

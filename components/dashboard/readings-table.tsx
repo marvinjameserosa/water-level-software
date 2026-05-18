@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Reading {
   id: string;
+  originalTimestamp: string;
   nodeId: string;
   timestamp: string;
   containerDiameter: number;
@@ -18,14 +20,46 @@ interface Reading {
 interface ReadingsTableProps {
   readings: Reading[];
   alertThreshold: number | string;
+  onDeleteEntry?: (timestamp: string) => void;
 }
 
-export function ReadingsTable({ readings, alertThreshold }: ReadingsTableProps) {
+export function ReadingsTable({ readings, alertThreshold, onDeleteEntry }: ReadingsTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const totalPages = Math.ceil(readings.length / itemsPerPage);
+  const currentReadings = readings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <Card className="p-6 border border-border">
-      <h2 className="text-lg font-semibold text-foreground mb-4">
-        Past Readings
-      </h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold text-foreground">
+          Past Readings
+        </h2>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        )}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -49,12 +83,12 @@ export function ReadingsTable({ readings, alertThreshold }: ReadingsTableProps) 
                 Status
               </th>
               <th className="text-center py-3 px-4 font-semibold text-foreground">
-                Video
+                Actions
               </th>
             </tr>
           </thead>
           <tbody>
-            {readings.map((reading) => (
+            {currentReadings.map((reading) => (
               <tr
                 key={reading.id}
                 className="border-b border-border hover:bg-secondary/50 transition-colors"
@@ -86,15 +120,32 @@ export function ReadingsTable({ readings, alertThreshold }: ReadingsTableProps) 
                   </span>
                 </td>
                 <td className="py-3 px-4 text-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.open(reading.videoUrl, "_blank")}
-                    className="inline-flex items-center gap-2"
-                  >
-                    <Eye className="size-4" />
-                    View
-                  </Button>
+                  <div className="flex items-center justify-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => window.open(reading.videoUrl, "_blank")}
+                      disabled={!reading.videoUrl || reading.videoUrl === "#"}
+                      title="View Photo"
+                    >
+                      <Eye className="size-4" />
+                    </Button>
+                    {onDeleteEntry && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (window.confirm("Delete this entry?")) {
+                            onDeleteEntry(reading.originalTimestamp);
+                          }
+                        }}
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        title="Delete Entry"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

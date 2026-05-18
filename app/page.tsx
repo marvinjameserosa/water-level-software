@@ -85,6 +85,35 @@ export default function WaterLevelDashboard() {
     }
   };
 
+  const handleDeleteEntry = async (nodeId: string, timestamp: string) => {
+    try {
+      await fetch('/api/system/data', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodeId, timestamp })
+      });
+      await fetchHistory();
+      toast({ title: "Entry deleted" });
+    } catch (e) {
+      toast({ title: "Failed to delete entry", variant: "destructive" });
+    }
+  };
+
+  const handleResetNode = async (nodeId: string) => {
+    if (!window.confirm(`Are you sure you want to reset all data for ${nodeId}? This will delete all photos and cannot be undone.`)) return;
+    try {
+      await fetch('/api/system/data', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodeId })
+      });
+      await fetchHistory();
+      toast({ title: `Data for ${nodeId} reset` });
+    } catch (e) {
+      toast({ title: "Failed to reset data", variant: "destructive" });
+    }
+  };
+
   const fetchHistory = useCallback(async () => {
     try {
       const res = await fetch('/data.json?ts=' + Date.now(), { cache: "no-store" });
@@ -222,6 +251,8 @@ export default function WaterLevelDashboard() {
           onCaptureComplete={fetchHistory}
           onSave={handleSaveConfig}
           isSaving={isSaving}
+          onDeleteEntry={(timestamp) => handleDeleteEntry("node_1", timestamp)}
+          onResetNode={() => handleResetNode("node_1")}
         />
 
         <NodeDashboard
@@ -237,6 +268,8 @@ export default function WaterLevelDashboard() {
           onCaptureComplete={fetchHistory}
           onSave={handleSaveConfig}
           isSaving={isSaving}
+          onDeleteEntry={(timestamp) => handleDeleteEntry("node_2", timestamp)}
+          onResetNode={() => handleResetNode("node_2")}
         />
       </div>
     </div>
