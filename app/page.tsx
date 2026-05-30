@@ -237,6 +237,81 @@ export default function WaterLevelDashboard() {
         </div>
       </div>
 
+      {/* System Interaction Overview */}
+      <div className="bg-card/50 border border-border rounded-xl p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">System Interaction Overview</h2>
+          <p className="text-sm text-muted-foreground">Side-by-side comparison of both nodes with transparent calculations.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-stretch">
+          {/* Node 1 Summary */}
+          <div className="border border-border rounded-lg p-4 space-y-2 bg-card">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Node 1</h3>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Container Depth:</span>
+                <span className="font-medium text-foreground">{Number(node1Config.diameter).toFixed(1)} cm</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Distance to Water:</span>
+                <span className="font-medium text-foreground">{typeof node1Distance === "number" ? node1Distance.toFixed(1) : "--"} cm</span>
+              </div>
+              <div className="border-t border-border my-1" />
+              <div className="flex justify-between">
+                <span className="font-mono text-xs">Depth − Distance =</span>
+                <span />
+              </div>
+            </div>
+            <p className={`text-3xl font-bold ${node1Alert ? "text-destructive" : "text-foreground"}`}>
+              {node1CurrentLevel !== undefined ? node1CurrentLevel.toFixed(1) : "--"}
+              <span className="text-lg ml-1 font-normal text-muted-foreground">cm</span>
+            </p>
+          </div>
+
+          {/* Center Difference Display */}
+          <div className="flex flex-col items-center justify-center px-4 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Difference</span>
+            <div className="flex items-center gap-2">
+              <svg className="size-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+              <span className="text-3xl font-bold text-primary">
+                {node1CurrentLevel !== undefined && node2CurrentLevel !== undefined
+                  ? Math.abs(node1CurrentLevel - node2CurrentLevel).toFixed(1)
+                  : "--"}
+              </span>
+              <span className="text-lg text-muted-foreground">cm</span>
+            </div>
+            <p className="text-xs text-muted-foreground font-mono mt-1">
+              |{node1CurrentLevel !== undefined ? node1CurrentLevel.toFixed(1) : "?"} − {node2CurrentLevel !== undefined ? node2CurrentLevel.toFixed(1) : "?"}|
+            </p>
+          </div>
+
+          {/* Node 2 Summary */}
+          <div className="border border-border rounded-lg p-4 space-y-2 bg-card">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Node 2</h3>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Container Depth:</span>
+                <span className="font-medium text-foreground">{Number(node2Config.diameter).toFixed(1)} cm</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Distance to Water:</span>
+                <span className="font-medium text-foreground">{typeof node2Distance === "number" ? node2Distance.toFixed(1) : "--"} cm</span>
+              </div>
+              <div className="border-t border-border my-1" />
+              <div className="flex justify-between">
+                <span className="font-mono text-xs">Depth − Distance =</span>
+                <span />
+              </div>
+            </div>
+            <p className={`text-3xl font-bold ${node2Alert ? "text-destructive" : "text-foreground"}`}>
+              {node2CurrentLevel !== undefined ? node2CurrentLevel.toFixed(1) : "--"}
+              <span className="text-lg ml-1 font-normal text-muted-foreground">cm</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-8">
         <NodeDashboard
           nodeId="node_1"

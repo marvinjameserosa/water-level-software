@@ -64,7 +64,8 @@ export function NodeDashboard({
       
       // The ultrasonic sensor is at the top. 
       // Water Level = Total Depth of Container - Distance to Water Surface
-      const actualWaterLevel = totalDepth - sensorDistance;
+      // If distance >= depth (empty container), clamp to 0
+      const actualWaterLevel = Math.max(0, totalDepth - sensorDistance);
       
       // The 'difference' in the table was originally mapping to distance. We'll explicitly call it distance.
       const difference = sensorDistance;
@@ -93,7 +94,7 @@ export function NodeDashboard({
 
   const totalDepth = Number(containerDiameter) || 0;
   const hasData = typeof level === "number";
-  const currentWaterLevel = hasData ? (totalDepth - level) : undefined;
+  const currentWaterLevel = hasData ? Math.max(0, totalDepth - level) : undefined;
   const isAlert = hasData && typeof userThreshold === "number" ? currentWaterLevel! <= userThreshold : false;
 
   return (
