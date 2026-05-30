@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { AlertBanner } from "@/components/dashboard/alert-banner";
-import { BatteryStatus } from "@/components/dashboard/battery-status";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { GlobalSettings } from "@/components/dashboard/global-settings";
+import { SystemInteractionOverview } from "@/components/dashboard/system-interaction-overview";
 import { NodeDashboard } from "@/components/dashboard/node-dashboard";
 import { useToast } from "@/hooks/use-toast";
 
@@ -216,118 +217,35 @@ export default function WaterLevelDashboard() {
 
   return (
     <div className="container mx-auto p-4 max-w-6xl space-y-6">
-      <header className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">System Dashboard</h1>
-        </div>
-        <BatteryStatus isOnline={!isErrorState} />
-      </header>
+      <DashboardHeader
+        isOnline={!isErrorState}
+        node1Alert={node1Alert}
+        node2Alert={node2Alert}
+      />
 
-      {(node1Alert || node2Alert) && (
-        <AlertBanner
-          title="Water Level Alert"
-          description={`Water level is ${node1Alert ? "Node 1" : "Node 2"} below threshold.`}
-        />
-      )}
+      <GlobalSettings
+        globalInterval={globalInterval}
+        onIntervalChange={setGlobalInterval}
+        onSave={handleSaveConfig}
+        isSaving={isSaving}
+      />
 
-      <div className="bg-card/50 border border-border p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Global Settings</h2>
-          <p className="text-sm text-muted-foreground">Configure the polling interval for continuous background monitoring.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium whitespace-nowrap">Polling Interval (s):</label>
-          <input 
-            type="number" 
-            className="flex h-9 w-24 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            value={globalInterval}
-            onChange={(e) => setGlobalInterval(e.target.value === "" ? "" : parseFloat(e.target.value))}
-            min={5}
-          />
-          <button 
-            onClick={handleSaveConfig} 
-            disabled={isSaving}
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
-
-      {/* System Interaction Overview */}
-      <div className="bg-card/50 border border-border rounded-xl p-6 space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">System Interaction Overview</h2>
-          <p className="text-sm text-muted-foreground">Side-by-side comparison of both nodes with transparent calculations.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-stretch">
-          {/* Node 1 Summary */}
-          <div className="border border-border rounded-lg p-4 space-y-2 bg-card">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Node 1</h3>
-            <div className="space-y-1 text-sm text-muted-foreground">
-              <div className="flex justify-between">
-                <span>Container Depth:</span>
-                <span className="font-medium text-foreground">{Number(node1Config.diameter).toFixed(1)} cm</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Distance to Water:</span>
-                <span className="font-medium text-foreground">{typeof node1Distance === "number" ? node1Distance.toFixed(1) : "--"} cm</span>
-              </div>
-              <div className="border-t border-border my-1" />
-              <div className="flex justify-between">
-                <span className="font-mono text-xs">Depth − Distance =</span>
-                <span />
-              </div>
-            </div>
-            <p className={`text-3xl font-bold ${node1Alert ? "text-destructive" : "text-foreground"}`}>
-              {node1CurrentLevel !== undefined ? node1CurrentLevel.toFixed(1) : "--"}
-              <span className="text-lg ml-1 font-normal text-muted-foreground">cm</span>
-            </p>
-          </div>
-
-          {/* Center Difference Display */}
-          <div className="flex flex-col items-center justify-center px-4 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Difference</span>
-            <div className="flex items-center gap-2">
-              <svg className="size-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
-              <span className="text-3xl font-bold text-primary">
-                {node1CurrentLevel !== undefined && node2CurrentLevel !== undefined
-                  ? Math.abs(node1CurrentLevel - node2CurrentLevel).toFixed(1)
-                  : "--"}
-              </span>
-              <span className="text-lg text-muted-foreground">cm</span>
-            </div>
-            <p className="text-xs text-muted-foreground font-mono mt-1">
-              |{node1CurrentLevel !== undefined ? node1CurrentLevel.toFixed(1) : "?"} − {node2CurrentLevel !== undefined ? node2CurrentLevel.toFixed(1) : "?"}|
-            </p>
-          </div>
-
-          {/* Node 2 Summary */}
-          <div className="border border-border rounded-lg p-4 space-y-2 bg-card">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Node 2</h3>
-            <div className="space-y-1 text-sm text-muted-foreground">
-              <div className="flex justify-between">
-                <span>Container Depth:</span>
-                <span className="font-medium text-foreground">{Number(node2Config.diameter).toFixed(1)} cm</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Distance to Water:</span>
-                <span className="font-medium text-foreground">{typeof node2Distance === "number" ? node2Distance.toFixed(1) : "--"} cm</span>
-              </div>
-              <div className="border-t border-border my-1" />
-              <div className="flex justify-between">
-                <span className="font-mono text-xs">Depth − Distance =</span>
-                <span />
-              </div>
-            </div>
-            <p className={`text-3xl font-bold ${node2Alert ? "text-destructive" : "text-foreground"}`}>
-              {node2CurrentLevel !== undefined ? node2CurrentLevel.toFixed(1) : "--"}
-              <span className="text-lg ml-1 font-normal text-muted-foreground">cm</span>
-            </p>
-          </div>
-        </div>
-      </div>
+      <SystemInteractionOverview
+        node1={{
+          label: "Node 1",
+          containerDepth: Number(node1Config.diameter) || 0,
+          distance: node1Distance,
+          waterLevel: node1CurrentLevel,
+          isAlert: node1Alert,
+        }}
+        node2={{
+          label: "Node 2",
+          containerDepth: Number(node2Config.diameter) || 0,
+          distance: node2Distance,
+          waterLevel: node2CurrentLevel,
+          isAlert: node2Alert,
+        }}
+      />
 
       <div className="grid gap-8">
         <NodeDashboard
