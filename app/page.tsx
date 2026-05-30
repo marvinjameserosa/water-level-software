@@ -36,8 +36,8 @@ export default function WaterLevelDashboard() {
   const { toast } = useToast();
 
   // Per-node states for inputs
-  const [node1Config, setNode1Config] = useState<{ diameter: number | string; threshold: number | string }>({ diameter: DEFAULT_DIAMETER, threshold: DEFAULT_USER_THRESHOLD });
-  const [node2Config, setNode2Config] = useState<{ diameter: number | string; threshold: number | string }>({ diameter: DEFAULT_DIAMETER, threshold: DEFAULT_USER_THRESHOLD });
+  const [node1Config, setNode1Config] = useState<{ diameter: number | string; threshold: number | string; lastImage?: string }>({ diameter: DEFAULT_DIAMETER, threshold: DEFAULT_USER_THRESHOLD, lastImage: "" });
+  const [node2Config, setNode2Config] = useState<{ diameter: number | string; threshold: number | string; lastImage?: string }>({ diameter: DEFAULT_DIAMETER, threshold: DEFAULT_USER_THRESHOLD, lastImage: "" });
 
   const [isSaving, setIsSaving] = useState(false);
   const [globalInterval, setGlobalInterval] = useState<number | string>(30);
@@ -194,8 +194,25 @@ export default function WaterLevelDashboard() {
   const node1Alert = typeof node1Config.threshold === "number" && node1CurrentLevel !== undefined ? node1CurrentLevel <= node1Config.threshold : false;
   const node2Alert = typeof node2Config.threshold === "number" && node2CurrentLevel !== undefined ? node2CurrentLevel <= node2Config.threshold : false;
 
-  const node1ImageUrl = Array([...history]).reverse().find(h => (h.nodeId ?? "node_1") === "node_1" && h.image)?.image;
-  const node2ImageUrl = Array([...history]).reverse().find(h => (h.nodeId ?? "node_1") === "node_2" && h.image)?.image;
+  const node1ImageFromHistory = Array([...history]).reverse().find(h => (h.nodeId ?? "node_1") === "node_1" && h.image)?.image;
+  const node2ImageFromHistory = Array([...history]).reverse().find(h => (h.nodeId ?? "node_1") === "node_2" && h.image)?.image;
+
+  // Use history image first, fall back to config-persisted lastImage
+  const node1ImageUrl = node1ImageFromHistory || node1Config.lastImage || undefined;
+  const node2ImageUrl = node2ImageFromHistory || node2Config.lastImage || undefined;
+
+  // Persist last image into config whenever a new one appears from history
+  useEffect(() => {
+    if (node1ImageFromHistory && node1ImageFromHistory !== node1Config.lastImage) {
+      setNode1Config(prev => ({ ...prev, lastImage: node1ImageFromHistory }));
+    }
+  }, [node1ImageFromHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (node2ImageFromHistory && node2ImageFromHistory !== node2Config.lastImage) {
+      setNode2Config(prev => ({ ...prev, lastImage: node2ImageFromHistory }));
+    }
+  }, [node2ImageFromHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="container mx-auto p-4 max-w-6xl space-y-6">

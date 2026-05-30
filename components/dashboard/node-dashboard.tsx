@@ -126,8 +126,6 @@ export function NodeDashboard({
               isAlert={isAlert}
               initialImageUrl={imageUrl}
               onCaptureComplete={onCaptureComplete}
-              currentWaterLevel={currentWaterLevel}
-              totalDepth={totalDepth}
             />
           </div>
           

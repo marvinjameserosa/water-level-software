@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SmallVideoFeed } from "@/components/dashboard/small-video-feed";
 
 interface NodeCameraProps {
@@ -8,13 +8,18 @@ interface NodeCameraProps {
   isAlert: boolean;
   initialImageUrl?: string;
   onCaptureComplete?: () => void;
-  currentWaterLevel?: number;
-  totalDepth?: number;
 }
 
-export function NodeCamera({ nodeId, isAlert, initialImageUrl, onCaptureComplete, currentWaterLevel, totalDepth }: NodeCameraProps) {
+export function NodeCamera({ nodeId, isAlert, initialImageUrl, onCaptureComplete }: NodeCameraProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [localImageUrl, setLocalImageUrl] = useState<string | undefined>(initialImageUrl);
+
+  // Keep in sync with the latest image from history/config
+  useEffect(() => {
+    if (initialImageUrl) {
+      setLocalImageUrl(initialImageUrl);
+    }
+  }, [initialImageUrl]);
 
   const handleCapture = async () => {
     if (isCapturing) return;
@@ -53,8 +58,7 @@ export function NodeCamera({ nodeId, isAlert, initialImageUrl, onCaptureComplete
       isCapturing={isCapturing}
       imageUrl={localImageUrl || initialImageUrl}
       onManualCapture={handleCapture}
-      currentWaterLevel={currentWaterLevel}
-      totalDepth={totalDepth}
     />
   );
 }
+
