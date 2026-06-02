@@ -12,18 +12,15 @@ interface Reading {
   timestamp: string;
   containerDiameter: number;
   waterLevel: number;
-  difference: number;
-  status: "ok" | "alert";
   videoUrl: string;
 }
 
 interface ReadingsTableProps {
   readings: Reading[];
-  alertThreshold: number | string;
   onDeleteEntry?: (timestamp: string) => void;
 }
 
-export function ReadingsTable({ readings, alertThreshold, onDeleteEntry }: ReadingsTableProps) {
+export function ReadingsTable({ readings, onDeleteEntry }: ReadingsTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -73,14 +70,8 @@ export function ReadingsTable({ readings, alertThreshold, onDeleteEntry }: Readi
               <th className="text-right py-3 px-4 font-semibold text-foreground">
                 Total Depth (cm)
               </th>
-              <th className="text-right py-3 px-4 font-semibold text-foreground" title="Distance from the sensor at the top down to the water surface">
-                Distance to Water (cm)
-              </th>
               <th className="text-right py-3 px-4 font-semibold text-foreground">
                 Water Level (cm)
-              </th>
-              <th className="text-center py-3 px-4 font-semibold text-foreground">
-                Status
               </th>
               <th className="text-center py-3 px-4 font-semibold text-foreground">
                 Actions
@@ -102,22 +93,8 @@ export function ReadingsTable({ readings, alertThreshold, onDeleteEntry }: Readi
                 <td className="py-3 px-4 text-right text-foreground">
                   {reading.containerDiameter.toFixed(1)}
                 </td>
-                <td className="py-3 px-4 text-right font-semibold text-foreground">
-                  {reading.difference.toFixed(1)}
-                </td>
                 <td className="py-3 px-4 text-right text-foreground">
                   {reading.waterLevel.toFixed(1)}
-                </td>
-                <td className="py-3 px-4 text-center">
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                      (typeof alertThreshold === "number" && reading.waterLevel <= alertThreshold)
-                        ? "bg-destructive/20 text-destructive"
-                        : "bg-success/20 text-success"
-                    }`}
-                  >
-                    {(typeof alertThreshold === "number" && reading.waterLevel <= alertThreshold) ? "ALERT" : "OK"}
-                  </span>
                 </td>
                 <td className="py-3 px-4 text-center">
                   <div className="flex items-center justify-center gap-1">

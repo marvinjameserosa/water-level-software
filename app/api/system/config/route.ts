@@ -12,8 +12,9 @@ export async function GET() {
     // If file doesn't exist or error, return defaults
     const defaults = {
       interval: 30,
-      node_1: { diameter: 10.4, threshold: 2.0, lastImage: "" },
-      node_2: { diameter: 10.4, threshold: 2.0, lastImage: "" }
+      differenceThreshold: 2.0,
+      node_1: { diameter: 10.4, lastImage: "" },
+      node_2: { diameter: 10.4, lastImage: "" }
     };
     return NextResponse.json(defaults);
   }

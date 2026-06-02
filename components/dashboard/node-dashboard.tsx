@@ -21,9 +21,7 @@ interface NodeDashboardProps {
   history: StoredReading[];
   level?: number;
   containerDiameter: number | string;
-  userThreshold: number | string;
   onDiameterChange: (val: number | string) => void;
-  onThresholdChange: (val: number | string) => void;
   imageUrl?: string;
   onCaptureComplete: () => void;
   onSave: () => void;
@@ -43,9 +41,7 @@ export function NodeDashboard({
   history,
   level,
   containerDiameter,
-  userThreshold,
   onDiameterChange,
-  onThresholdChange,
   imageUrl,
   onCaptureComplete,
   onSave,
@@ -57,26 +53,12 @@ export function NodeDashboard({
   
   const buildReadings = () => {
     if (!nodeHistory.length) return [];
-    // nodeHistory is already descending order since backend unshifts.
     return nodeHistory.map((entry, index) => {
       const totalDepth = Number(containerDiameter) || 0;
       const sensorDistance = typeof entry.d === "number" ? entry.d : 0;
       
-      // The ultrasonic sensor is at the top. 
       // Water Level = Total Depth of Container - Distance to Water Surface
-      // If distance >= depth (empty container), clamp to 0
       const actualWaterLevel = Math.max(0, totalDepth - sensorDistance);
-      
-      // The 'difference' in the table was originally mapping to distance. We'll explicitly call it distance.
-      const difference = sensorDistance;
-      let isAlert = false;
-        
-      // If the water level falls below the threshold, trigger the ALERT
-      if (typeof userThreshold === "number") {
-        if (actualWaterLevel <= userThreshold) {
-          isAlert = true;
-        }
-      }
 
       return {
         id: `${entry.timestamp}-${index}`,
@@ -85,8 +67,6 @@ export function NodeDashboard({
         timestamp: formatTimestamp(entry.timestamp),
         containerDiameter: totalDepth,
         waterLevel: actualWaterLevel,
-        difference: sensorDistance,
-        status: (isAlert ? "alert" : "ok") as "ok" | "alert",
         videoUrl: entry.image ?? "#",
       };
     });
@@ -95,7 +75,6 @@ export function NodeDashboard({
   const totalDepth = Number(containerDiameter) || 0;
   const hasData = typeof level === "number";
   const currentWaterLevel = hasData ? Math.max(0, totalDepth - level) : undefined;
-  const isAlert = hasData && typeof userThreshold === "number" ? currentWaterLevel! <= userThreshold : false;
 
   return (
     <div className="space-y-6 border border-border rounded-xl p-6 bg-card/50">
@@ -123,7 +102,7 @@ export function NodeDashboard({
             </h3>
             <NodeCamera
               nodeId={nodeId}
-              isAlert={isAlert}
+              isAlert={false}
               initialImageUrl={imageUrl}
               onCaptureComplete={onCaptureComplete}
             />
@@ -133,7 +112,6 @@ export function NodeDashboard({
             label={`${title} Water Level`}
             value={hasData ? currentWaterLevel!.toFixed(1) : "--"}
             unit={hasData ? "cm" : ""}
-            status={hasData ? (isAlert ? "alert" : "ok") : undefined}
             icon={<Droplets className="size-5" />}
           />
         </div>
@@ -142,9 +120,7 @@ export function NodeDashboard({
         <div className="space-y-6 flex flex-col">
           <InputControls
             containerDiameter={containerDiameter}
-            userThreshold={userThreshold}
             onDiameterChange={onDiameterChange}
-            onThresholdChange={onThresholdChange}
             onSave={onSave}
             isSaving={isSaving}
           />
@@ -154,7 +130,6 @@ export function NodeDashboard({
             </h3>
             <ReadingsTable 
               readings={buildReadings()} 
-              alertThreshold={userThreshold} 
               onDeleteEntry={onDeleteEntry}
             />
           </div>

@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-import { Card } from '@/components/ui/card'
-import { AlertCircle } from 'lucide-react'
+import { Card } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 interface AlertBannerProps {
-  isAlert: boolean
-  difference: number
-  threshold: number
+  isAlert: boolean;
+  difference?: number;
+  threshold?: number;
 }
 
 export function AlertBanner({ isAlert, difference, threshold }: AlertBannerProps) {
   if (!isAlert) {
-    return null
+    return null;
   }
 
   return (
@@ -21,11 +21,12 @@ export function AlertBanner({ isAlert, difference, threshold }: AlertBannerProps
         <div>
           <p className="font-semibold text-destructive">Alert: Threshold Exceeded</p>
           <p className="text-sm text-destructive/80">
-            Difference ({difference.toFixed(1)} cm) exceeds threshold (&gt; {threshold} cm)
+            {typeof difference === "number" && typeof threshold === "number"
+              ? `Difference (${difference.toFixed(1)} cm) exceeds threshold (> ${threshold} cm)`
+              : "Water level difference between nodes exceeds the configured threshold."}
           </p>
         </div>
       </div>
     </Card>
-  )
+  );
 }
-

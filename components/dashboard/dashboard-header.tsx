@@ -5,11 +5,12 @@ import { BatteryStatus } from "@/components/dashboard/battery-status";
 
 interface DashboardHeaderProps {
   isOnline: boolean;
-  node1Alert: boolean;
-  node2Alert: boolean;
+  isDifferenceAlert: boolean;
+  difference?: number;
+  threshold?: number;
 }
 
-export function DashboardHeader({ isOnline, node1Alert, node2Alert }: DashboardHeaderProps) {
+export function DashboardHeader({ isOnline, isDifferenceAlert, difference, threshold }: DashboardHeaderProps) {
   return (
     <>
       <header className="flex justify-between items-center mb-6">
@@ -19,12 +20,11 @@ export function DashboardHeader({ isOnline, node1Alert, node2Alert }: DashboardH
         <BatteryStatus isOnline={isOnline} />
       </header>
 
-      {(node1Alert || node2Alert) && (
-        <AlertBanner
-          title="Water Level Alert"
-          description={`Water level is ${node1Alert ? "Node 1" : "Node 2"} below threshold.`}
-        />
-      )}
+      <AlertBanner
+        isAlert={isDifferenceAlert}
+        difference={difference}
+        threshold={threshold}
+      />
     </>
   );
 }

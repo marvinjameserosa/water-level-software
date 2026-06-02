@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { GlobalSettings } from "@/components/dashboard/global-settings";
 import { SystemInteractionOverview } from "@/components/dashboard/system-interaction-overview";
+import { NodeDifferencesTable } from "@/components/dashboard/node-differences-table";
 import { NodeDashboard } from "@/components/dashboard/node-dashboard";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,8 +18,7 @@ type StoredReading = {
 };
 
 const DEFAULT_DIAMETER = 10.4;
-const DEFAULT_WATER_LEVEL = 10.7;
-const DEFAULT_USER_THRESHOLD = 2.0;
+const DEFAULT_DIFFERENCE_THRESHOLD = 2.0;
 
 function latestCaptureForNode(history: StoredReading[], nodeId: string) {
   for (let i = history.length - 1; i >= 0; i--) {
@@ -36,9 +36,12 @@ export default function WaterLevelDashboard() {
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
   const { toast } = useToast();
 
-  // Per-node states for inputs
-  const [node1Config, setNode1Config] = useState<{ diameter: number | string; threshold: number | string; lastImage?: string }>({ diameter: DEFAULT_DIAMETER, threshold: DEFAULT_USER_THRESHOLD, lastImage: "" });
-  const [node2Config, setNode2Config] = useState<{ diameter: number | string; threshold: number | string; lastImage?: string }>({ diameter: DEFAULT_DIAMETER, threshold: DEFAULT_USER_THRESHOLD, lastImage: "" });
+  // Per-node configs (diameter + lastImage only, no threshold)
+  const [node1Config, setNode1Config] = useState<{ diameter: number | string; lastImage?: string }>({ diameter: DEFAULT_DIAMETER, lastImage: "" });
+  const [node2Config, setNode2Config] = useState<{ diameter: number | string; lastImage?: string }>({ diameter: DEFAULT_DIAMETER, lastImage: "" });
+
+  // Global difference threshold
+  const [differenceThreshold, setDifferenceThreshold] = useState<number | string>(DEFAULT_DIFFERENCE_THRESHOLD);
 
   const [isSaving, setIsSaving] = useState(false);
   const [globalInterval, setGlobalInterval] = useState<number | string>(30);
@@ -50,6 +53,7 @@ export default function WaterLevelDashboard() {
         if (res.ok) {
           const data = await res.json();
           if (data.interval) setGlobalInterval(data.interval);
+          if (data.differenceThreshold !== undefined) setDifferenceThreshold(data.differenceThreshold);
           if (data.node_1) setNode1Config(data.node_1);
           if (data.node_2) setNode2Config(data.node_2);
         }
@@ -68,7 +72,12 @@ export default function WaterLevelDashboard() {
       await fetch('/api/system/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ interval: globalInterval, node_1: node1Config, node_2: node2Config })
+        body: JSON.stringify({
+          interval: globalInterval,
+          differenceThreshold,
+          node_1: node1Config,
+          node_2: node2Config,
+        })
       });
       toast({
         title: "Configuration Saved",
@@ -188,12 +197,17 @@ export default function WaterLevelDashboard() {
   const node1Distance = node1Latest?.d;
   const node2Distance = node2Latest?.d;
   
-  // Evaluate alerts directly based on Actual Water Level
+  // Compute water levels
   const node1CurrentLevel = typeof node1Distance === "number" ? Math.max(0, Number(node1Config.diameter) - node1Distance) : undefined;
   const node2CurrentLevel = typeof node2Distance === "number" ? Math.max(0, Number(node2Config.diameter) - node2Distance) : undefined;
 
-  const node1Alert = typeof node1Config.threshold === "number" && node1CurrentLevel !== undefined ? node1CurrentLevel <= node1Config.threshold : false;
-  const node2Alert = typeof node2Config.threshold === "number" && node2CurrentLevel !== undefined ? node2CurrentLevel <= node2Config.threshold : false;
+  // Difference-based alert logic
+  const nodeDifference = (node1CurrentLevel !== undefined && node2CurrentLevel !== undefined)
+    ? Math.abs(node1CurrentLevel - node2CurrentLevel)
+    : undefined;
+  const isDifferenceAlert = typeof differenceThreshold === "number" && nodeDifference !== undefined
+    ? nodeDifference > differenceThreshold
+    : false;
 
   const node1ImageFromHistory = Array([...history]).reverse().find(h => (h.nodeId ?? "node_1") === "node_1" && h.image)?.image;
   const node2ImageFromHistory = Array([...history]).reverse().find(h => (h.nodeId ?? "node_1") === "node_2" && h.image)?.image;
@@ -219,13 +233,16 @@ export default function WaterLevelDashboard() {
     <div className="container mx-auto p-4 max-w-6xl space-y-6">
       <DashboardHeader
         isOnline={!isErrorState}
-        node1Alert={node1Alert}
-        node2Alert={node2Alert}
+        isDifferenceAlert={isDifferenceAlert}
+        difference={nodeDifference}
+        threshold={typeof differenceThreshold === "number" ? differenceThreshold : undefined}
       />
 
       <GlobalSettings
         globalInterval={globalInterval}
         onIntervalChange={setGlobalInterval}
+        differenceThreshold={differenceThreshold}
+        onDifferenceThresholdChange={setDifferenceThreshold}
         onSave={handleSaveConfig}
         isSaving={isSaving}
       />
@@ -234,17 +251,22 @@ export default function WaterLevelDashboard() {
         node1={{
           label: "Node 1",
           containerDepth: Number(node1Config.diameter) || 0,
-          distance: node1Distance,
           waterLevel: node1CurrentLevel,
-          isAlert: node1Alert,
+          isAlert: isDifferenceAlert,
         }}
         node2={{
           label: "Node 2",
           containerDepth: Number(node2Config.diameter) || 0,
-          distance: node2Distance,
           waterLevel: node2CurrentLevel,
-          isAlert: node2Alert,
+          isAlert: isDifferenceAlert,
         }}
+      />
+
+      <NodeDifferencesTable
+        history={history}
+        node1Diameter={Number(node1Config.diameter) || 0}
+        node2Diameter={Number(node2Config.diameter) || 0}
+        differenceThreshold={differenceThreshold}
       />
 
       <div className="grid gap-8">
@@ -254,9 +276,7 @@ export default function WaterLevelDashboard() {
           history={history}
           level={node1Distance}
           containerDiameter={node1Config.diameter}
-          userThreshold={node1Config.threshold}
           onDiameterChange={(val) => setNode1Config(prev => ({ ...prev, diameter: val }))}
-          onThresholdChange={(val) => setNode1Config(prev => ({ ...prev, threshold: val }))}
           imageUrl={node1ImageUrl}
           onCaptureComplete={fetchHistory}
           onSave={handleSaveConfig}
@@ -271,9 +291,7 @@ export default function WaterLevelDashboard() {
           history={history}
           level={node2Distance}
           containerDiameter={node2Config.diameter}
-          userThreshold={node2Config.threshold}
           onDiameterChange={(val) => setNode2Config(prev => ({ ...prev, diameter: val }))}
-          onThresholdChange={(val) => setNode2Config(prev => ({ ...prev, threshold: val }))}
           imageUrl={node2ImageUrl}
           onCaptureComplete={fetchHistory}
           onSave={handleSaveConfig}

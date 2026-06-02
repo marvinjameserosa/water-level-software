@@ -3,7 +3,6 @@
 interface NodeSummary {
   label: string;
   containerDepth: number;
-  distance?: number;
   waterLevel?: number;
   isAlert: boolean;
 }
@@ -22,20 +21,12 @@ function NodeCard({ node }: { node: NodeSummary }) {
           <span>Container Depth:</span>
           <span className="font-medium text-foreground">{node.containerDepth.toFixed(1)} cm</span>
         </div>
-        <div className="flex justify-between">
-          <span>Distance to Water:</span>
-          <span className="font-medium text-foreground">{typeof node.distance === "number" ? node.distance.toFixed(1) : "--"} cm</span>
-        </div>
-        <div className="border-t border-border my-1" />
-        <div className="flex justify-between">
-          <span className="font-mono text-xs">Depth − Distance =</span>
-          <span />
-        </div>
       </div>
       <p className={`text-3xl font-bold ${node.isAlert ? "text-destructive" : "text-foreground"}`}>
         {node.waterLevel !== undefined ? node.waterLevel.toFixed(1) : "--"}
         <span className="text-lg ml-1 font-normal text-muted-foreground">cm</span>
       </p>
+      <p className="text-xs text-muted-foreground">Water Level</p>
     </div>
   );
 }
